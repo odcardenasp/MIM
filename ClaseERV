@@ -1,0 +1,94 @@
+import CoolProp.CoolProp as CoolProp
+from CoolProp import AbstractState
+from CoolProp.CoolProp import PhaseSI, PropsSI, get_global_param_string
+from CoolProp.HumidAirProp import HAPropsSI
+from math import sin
+import numpy as np
+
+
+class ERV:
+
+    def __init__(self, name, model, latent_ef, sensible_ef, ear):
+        self.name = name
+        self.model = model
+        self.latent_ef = latent_ef
+        self.sensible_ef = sensible_ef
+        self.ear = ear
+        self.minflow = 1000
+        self.maxflow = 5000
+
+
+
+    def Tout_air(self, Tamb, RHamb, Tin_exh, RHin_exh, Flow_outair, Flow_exhair):
+        Cp_outair = PropsSI("C", "T", Tamb + 273.15, "P", 101325, "air")
+        Cp_exhair = PropsSI("C", "T", Tin_exh + 273.15, "P", 101325, "air")
+        W_outair = HAPropsSI("W", "T", Tamb + 273.15, "P", 101325,'R',RHamb)
+        W_exhair = HAPropsSI("W", "T", Tin_exh + 273.15, "P", 101325,'R',RHin_exh)
+        Vol_outair = Flow_outair / 2118.8799
+        Vol_exhair = Flow_exhair / 2118.8799
+        mdot_outair = Vol_outair / HAPropsSI("Vha", "T", Tamb + 273.15, "P", 101325,'R',RHamb)
+        mdot_exhair = Vol_exhair / HAPropsSI("Vha", "T", Tin_exh + 273.15, "P", 101325,'R',RHin_exh)
+        m_dryoutair = mdot_outair / (W_outair + 1)
+        m_dryexhair = mdot_exhair / (W_exhair + 1)
+        Cout_air = Cp_outair * m_dryoutair
+        Cexh_air = Cp_exhair * m_dryexhair
+        Cmin = min(Cout_air, Cexh_air)
+        Qmax = Cmin * ( Tamb - Tin_exh )
+        Q = self.sensible_ef * Qmax 
+        Tout_air = Tamb - ( Q / Cout_air )
+        Tout_air_corr = Tout_air * (1 - self.ear) + Tin_exh * self.ear
+        return Tout_air_corr
+    
+    def Wout_air(self, Tamb, RHamb, Tin_exh, RHin_exh, Flow_outair, Flow_exhair):
+        W_amb = HAPropsSI("W", "T", Tamb + 273.15, "P", 101325,'R',RHamb)
+        W_exhair = HAPropsSI("W", "T", Tin_exh + 273.15, "P", 101325,'R',RHin_exh)
+        Vol_outair = Flow_outair / 2118.8799
+        Vol_exhair = Flow_exhair / 2118.8799
+        mdot_outair = Vol_outair / HAPropsSI("Vha", "T", Tamb + 273.15, "P", 101325,'R',RHamb)
+        mdot_exhair = Vol_exhair / HAPropsSI("Vha", "T", Tin_exh + 273.15, "P", 101325,'R',RHin_exh)
+        m_dryoutair = mdot_outair / (W_amb + 1)
+        m_dryexhair = mdot_exhair / (W_exhair + 1)
+        Tout2 = self.Tout_air(Tamb, RHamb, Tin_exh, RHin_exh, Flow_outair, Flow_exhair)
+        Tprom_outair = (Tamb + Tout2) / 2
+        hg_outair = PropsSI("H", "T", Tprom_outair + 273.15 ,'Q',1, "Water")
+        hf_outair = PropsSI("H", "T", Tprom_outair + 273.15, 'Q', 0, "Water")
+        deltaH_outair = hg_outair - hf_outair
+
+        hg_exhair = PropsSI("H", "T", Tin_exh + 273.15 ,'Q',1, "Water")
+        hf_exhair = PropsSI("H", "T", Tin_exh + 273.15, 'Q', 0, "Water")
+        deltaH_exhair = hg_exhair - hf_exhair
+        
+        Cout_air = deltaH_outair * m_dryoutair
+        Cexh_air = deltaH_exhair * m_dryexhair
+        Cmin = min(Cout_air, Cexh_air)
+        Qmax = Cmin * ( W_amb - W_exhair )
+        Q = self.latent_ef * Qmax 
+        W_outair = W_amb - ( Q / Cout_air )
+        W_outair_corr = W_outair * (1 - self.ear) + W_exhair * self.ear
+        return W_outair_corr
+    
+    def enthalpy(self, Tamb, RHamb, Tin_exh, RHin_exh, Flow_outair, Flow_exhair):
+        W_amb = HAPropsSI("W", "T", Tamb + 273.15, "P", 101325,'R',RHamb)
+        Hin = HAPropsSI("H", "T", Tamb + 273.15, "P", 101325,'R',RHamb)
+        Tout = self.Tout_air(Tamb, RHamb, Tin_exh, RHin_exh, Flow_outair, Flow_exhair)
+        Wout = self.Wout_air(Tamb, RHamb, Tin_exh, RHin_exh, Flow_outair, Flow_exhair)
+        Hout = HAPropsSI("H", "T", Tout + 273.15, "P", 101325,'W', Wout)
+        deltaH = Hin - Hout
+
+        Vol_outair = Flow_outair / 2118.8799
+        rho = 1/ HAPropsSI("Vha", "T", 23.8888 + 273.15, "P", 101325,'R',RHamb)
+        mdot_outair = Vol_outair * rho
+        m_dryoutair = mdot_outair / (W_amb + 1)
+        deltaQ = m_dryoutair * deltaH
+
+        return deltaQ
+    
+
+# Creating an instance of the Car class
+my_car = ERV('ERW1', 'GreenHeck',0.716,0.757,0.039)
+
+
+print( my_car.Tout_air(34.1666, 0.662, 23.8888, 0.5, 2082, 2082) )
+print( my_car.Wout_air(34.1666, 0.662, 23.8888, 0.5, 2082, 2082) )
+print( my_car.enthalpy(34.1666, 0.662, 23.8888, 0.5, 2082, 2082) )
+

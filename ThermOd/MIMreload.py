@@ -143,6 +143,6 @@ else:
     None
 
 
-print("Ostias, he finalizado")
+print("Ostias, he finalizado un poquito mas")
 print(df.index[0])
 

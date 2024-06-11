@@ -93,9 +93,6 @@ def open_filetype(filetype, filepath, separator):
     return out_df
 
 def read_file():
-    window = tk.Tk()
-    window.wm_attributes('-topmost', 1)
-    window.withdraw()   # this supress the tk window
     filepath = fd.askopenfilename(parent=window, filetypes=[("Excel Files", "*.xlsx"), ('CSV Files', '*.csv'),
                                                              ('TXT Files', '*.txt')])
     root, file_extension = os.path.splitext(filepath)
@@ -103,6 +100,18 @@ def read_file():
     df = open_filetype(file_extension, filepath, ",")
     return df
 
+def read_directory():
+    directory_path_str = fd.askdirectory(parent = window)
+    directory = os.fsencode(directory_path_str)
+
+    for file in os.listdir(directory):
+
+        filename = os.fsdecode(file)
+        filepath = os.path.join(directory_path_str, filename)
+        root, file_extension = os.path.splitext(filepath)
+        df = open_filetype(file_extension, filepath, ",")
+        
+    return df
 
 def get_hourly_data(time_arr, values_arr):
     epoch_start = datetime(1900, 1, 1)
@@ -132,15 +141,7 @@ def filter_non_numeric_rows(df_p):
                                             for val in row), axis=1)]
 
 
-
-
-print("Hola bb")
-print("Ingrese: \n 1: Datos desde CSV \n 2: Datos ingresados como patrón"
-       "\n 3: Salir")
-input_type = int(input())
-
-if input_type == 1:
-    df = read_file()
+def clean_df(df):
     df.dropna(axis = 1, thresh = round(len(df.index) / 2), inplace = True)
     df.dropna(axis = 0, inplace = True)
 
@@ -150,30 +151,50 @@ if input_type == 1:
         df.columns = new_header
         df.reset_index(drop = True, inplace = True)
 
-    df.iloc[:,1:] = df.iloc[:,1:].apply(lambda x: pd.to_numeric(x, errors = 'coerce'))
-    df.iloc[:,0] = df.iloc[:,0].apply(lambda x: pd.to_datetime(x, errors = 'coerce'))
+    #units = df[ df[df.columns[0]].str.contains(r'unit', case=False, regex=True) ]
+
+
+    df.rename(columns={ df.columns[0]: "Fecha" }, inplace = True)
+    df.loc[:, df.columns != "Fecha"] = df.loc[:,df.columns != "Fecha"].apply(lambda x: pd.to_numeric(x, errors = 'coerce'))
+    df["Fecha"] = df["Fecha"].apply(lambda x: pd.to_datetime(x, errors = 'coerce'))
 
     df.dropna(axis = 0, inplace = True)
     df.reset_index(drop = True, inplace = True)
+    return df  
 
-    print(df.index)
-    print(df.describe())
-    print(df.info())
-    print(df.dtypes)
 
-    df = df.convert_dtypes()
+print("Hola bb")
 
-    print(df.index)
-    print(df.describe())
-    print(df.info())
-    print(df.dtypes)
+window = tk.Tk()
+window.wm_attributes('-topmost', 1)
+window.withdraw()   # this supress the tk window
+
+
+print("Ingrese: \n 1: Datos desde CSV \n 2: Datos ingresados como patrón"
+       "\n 3: Salir")
+input_type = int(input())
+
+if input_type == 1:
+
+    print("\n 1: Si cargará los datos en un único documento u hoja"
+           "\n 2: Si cargará los datos de cada variable en un documento u hoja separado"
+            "\n 3: Salir")
+    read_file_type = int(input())
+
+    if read_file_type == 1:
+        df = read_file()
+        df = clean_df(df)
+    elif read_file_type == 2:
+        df = read_directory()
+        df = clean_df(df)
+    else:
+        None
 
 elif input_type == 2:
     Mtx_values, index_list = block_hours()
     print(Mtx_values)
 else: 
     None
-
-
+print("terminaste")
 
 

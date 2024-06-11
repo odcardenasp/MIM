@@ -196,5 +196,5 @@ elif input_type == 2:
 else: 
     None
 print("terminaste")
-
+print("we are..")
 

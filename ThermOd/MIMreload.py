@@ -76,21 +76,21 @@ def nearest(items, pivot):
     return min(items, key=lambda x: abs(x - pivot))
 
 
-def open_filetype(filetype):
+def open_filetype(filetype, filepath, separator):
     
     try: 
         match filetype:
             case ".xlsx":
-                func = pd.read_excel
+                out_df = pd.read_excel(filepath)
             case ".txt" | ".csv" :
-                func = pd.read_csv
+                out_df = pd.read_csv(filepath)
             case _:
                 raise Exception
             
     except AttributeError:
         print(f"{filetype} is not a valid format type.")
         
-    return func
+    return out_df
 
 def read_file():
     window = tk.Tk()
@@ -100,8 +100,7 @@ def read_file():
                                                              ('TXT Files', '*.txt')])
     root, file_extension = os.path.splitext(filepath)
     print(root, "+", file_extension)
-    read_func = open_filetype(file_extension)
-    df = read_func(filepath)
+    df = open_filetype(file_extension, filepath, ",")
     return df
 
 
@@ -128,6 +127,12 @@ def get_hourly_data(time_arr, values_arr):
 
     return output_dict, index_list
 
+def filter_non_numeric_rows(df_p):
+    return df_p[df_p.iloc[:,2:].apply(lambda row: all(str(val).replace('.', '').isdigit() 
+                                            for val in row), axis=1)]
+
+
+
 
 print("Hola bb")
 print("Ingrese: \n 1: Datos desde CSV \n 2: Datos ingresados como patrón"
@@ -136,6 +141,33 @@ input_type = int(input())
 
 if input_type == 1:
     df = read_file()
+    df.dropna(axis = 1, thresh = round(len(df.index) / 2), inplace = True)
+    df.dropna(axis = 0, inplace = True)
+
+    if df.index[0] > 0:
+        new_header = df.iloc[0]
+        df = df.iloc[1:]
+        df.columns = new_header
+        df.reset_index(drop = True, inplace = True)
+
+    df.iloc[:,1:] = df.iloc[:,1:].apply(lambda x: pd.to_numeric(x, errors = 'coerce'))
+    df.iloc[:,0] = df.iloc[:,0].apply(lambda x: pd.to_datetime(x, errors = 'coerce'))
+
+    df.dropna(axis = 0, inplace = True)
+    df.reset_index(drop = True, inplace = True)
+
+    print(df.index)
+    print(df.describe())
+    print(df.info())
+    print(df.dtypes)
+
+    df = df.convert_dtypes()
+
+    print(df.index)
+    print(df.describe())
+    print(df.info())
+    print(df.dtypes)
+
 elif input_type == 2:
     Mtx_values, index_list = block_hours()
     print(Mtx_values)
@@ -143,6 +175,5 @@ else:
     None
 
 
-print("Ostias, he finalizado un poquito mas")
-print(df.index[0])
+
 

@@ -110,7 +110,7 @@ def plot_metric(K, scores, metric_name):
         fig.clf()
 
 
-directory_str = 'C:/Users/CARDENASPOSCARD/OneDrive - GREENYELLOW/Data/Descargas/Revision 2024'
+directory_str = 'C:/Users/OscarC/Downloads/Revision 2024'
 directory = os.fsencode(directory_str)
 figpath = os.path.join(directory_str, 'Data_Analysis')
 

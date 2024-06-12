@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, time
 import tkinter as tk
 from tkinter import *
 from tkinter import filedialog as fd
+import csv
 
 
 class FormatError(Exception):
@@ -75,15 +76,27 @@ def block_hours():
 def nearest(items, pivot):
     return min(items, key=lambda x: abs(x - pivot))
 
+def detect_delimiter_and_decimal(file_path, sample_size=1024):
+    with open(file_path, 'r') as file:
+        sample = file.read(sample_size)
+        
+    sniffer = csv.Sniffer()
+    delimiter = sniffer.sniff(sample).delimiter
+    
+    decimal = '.' if sample.count('.') > sample.count(',') else ','
+    
+    return delimiter, decimal
 
-def open_filetype(filetype, filepath, separator):
+
+def open_filetype(filetype, filepath):
     
     try: 
         match filetype:
             case ".xlsx":
                 out_df = pd.read_excel(filepath)
             case ".txt" | ".csv" :
-                out_df = pd.read_csv(filepath)
+                delimiter, decimal = detect_delimiter_and_decimal(filepath)
+                out_df = pd.read_csv(filepath, sep = delimiter, decimal = decimal)
             case _:
                 raise Exception
             
@@ -97,10 +110,12 @@ def read_file():
                                                              ('TXT Files', '*.txt')])
     root, file_extension = os.path.splitext(filepath)
     print(root, "+", file_extension)
-    df = open_filetype(file_extension, filepath, ",")
+    df = open_filetype(file_extension, filepath)
     return df
 
 def read_directory():
+
+    df_list = []
     directory_path_str = fd.askdirectory(parent = window)
     directory = os.fsencode(directory_path_str)
 
@@ -109,9 +124,13 @@ def read_directory():
         filename = os.fsdecode(file)
         filepath = os.path.join(directory_path_str, filename)
         root, file_extension = os.path.splitext(filepath)
-        df = open_filetype(file_extension, filepath, ",")
-        
-    return df
+
+        if file_extension in ['.xlsx', '.csv', '.txt']:
+            df = open_filetype(file_extension, filepath)
+            df = clean_df(df)
+            df_list.append(df)
+
+    return df_list
 
 def get_hourly_data(time_arr, values_arr):
     epoch_start = datetime(1900, 1, 1)
@@ -185,8 +204,10 @@ if input_type == 1:
         df = read_file()
         df = clean_df(df)
     elif read_file_type == 2:
-        df = read_directory()
-        df = clean_df(df)
+        df_list = read_directory()
+        df_a = df_list[0]
+        df_b = df_list[1]
+        df_c = df_list[2]
     else:
         None
 

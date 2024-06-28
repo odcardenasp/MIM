@@ -25,15 +25,15 @@ class DataReceiver:
     num_records = 0
     multiple_files = False
     df = None
-    dict = {}
+    dict_input = {}
+    dict_output = {}
     fields = []
 
 
-    def __read_cast(self, prompt, output_type, format = None):
+    def __read_cast(self, data, output_type, format = None):
 
         while True:
             try:
-                    data = input(prompt)
                     if output_type == datetime:
                         value_list = [datetime.strptime(time_str.strip(), format) for time_str in data.split(',')]
                     else:
@@ -46,55 +46,64 @@ class DataReceiver:
         return value_list
     
 
-    def add_field(self, name, output_type, format = None):
-        self.dict[name] = self.__read_cast(self, output_type, format)
+    def add_field(self, time, value, name, output_type):
+
+        self.fields.append( self.__read_cast(time, datetime, '%H:%M') )
+        self.fields.append( self.__read_cast(value, output_type, format) )
+        self.dict_input[name] = self.fields
+        self.fields = []
         self.num_fields += 1
-        return self.dict
+        return self.dict_input
     
     def del_field(self, name):
+
         try:
-            del self.dict[name]
+            del self.dict_input[name]
             self.num_fields -= 1
         except IndexError:
              print(f'Field {name} does not exist')
     
-        return self.dict
+        return self.dict_input
 
 
-def get_df_byblock(dic, time_step = None):
-
-    epoch_start = datetime(1900, 1, 1)
-    time_step = 15 if time_step == None else None  #tiempo intervalos de 15 min
-    len_data = int(24 * 60 / time_step)
-    hours_list = [ epoch_start + timedelta(minutes = int( x * time_step) ) for x in range(len_data) ]
-
-
-
-def nearest(items, pivot):
-    return min(items, key = lambda x: abs(x - pivot))
-
-def get_hourly_data(time_arr, values_arr):
-    epoch_start = datetime(1900, 1, 1)
-    time_step = 15   #tiempo intervalos de 15 min
-    len_data = int(24 * 60 / time_step)
-    hours_list = [ epoch_start + timedelta(minutes = int( x * time_step) ) for x in range(len_data) ]
-    values_list = [0] * len_data
-    index_list = [0] * len_data
-
-    for idx,(val,time_val) in enumerate(zip(values_arr, time_arr)):
+    def df_from_intervals(self, time_step = None):
         
-        nearest_hour = nearest(hours_list,time_val)
-        index = hours_list.index(nearest_hour)
-        index_list[idx] = index
+        if not self.dict_input:
+            print("Error: dict_input is empty. Cannot proceed.")
+            return None  # or raise an exception, depending on your error handling strategy
 
-        for i in ( range(index,len_data) ):
-            values_list[i] = val
-        for i in range(0, index_list[0]):
-            values_list[i] = val
+        epoch_start = datetime(1900, 1, 1)
+        time_step = 15 if time_step == None else time_step  #tiempo intervalos de 15 min
+        len_data = int(24 * 60 / time_step)
+        hours_list = [ epoch_start + timedelta(minutes = int( x * time_step) ) for x in range(len_data) ]
+        self.dict_output['time'] = hours_list
+
+        for key, value in self.dict_input.items():
+
+            values_list = [0] * len_data
+            index_list = [0] * len_data
+            
+            for idx, (time, val) in enumerate( zip(value[0], value[1]) ):
+                
+                nearest_hour = self.__nearest(hours_list,time)
+                index = hours_list.index(nearest_hour)
+                index_list[idx] = index
+
+                for i in ( range(index,len_data) ):
+                    values_list[i] = val
+                for i in range(0, index_list[0]):
+                    values_list[i] = val
+            
+            self.dict_output[key] = values_list
+            self.dict_input[key].append(index_list)
         
-    output_dict = {'hours': hours_list, 'values': values_list}
+        self.df = pd.DataFrame(self.dict_output)
 
-    return output_dict, index_list
+        return self.df 
+
+
+    def __nearest(self, items, pivot):
+        return min(items, key = lambda x: abs(x - pivot))
 
 
 
@@ -105,16 +114,40 @@ class nElementsError(Exception):
     pass
 
 
-""" test1 = DataReceiver()
+test1 = DataReceiver()
+
 n = int(input("Por favor ingrese el número de intervalos \n"))
 print("Ingrese la hora de inicio de cada bloque en horario militar \n"
         "con el siguiente formato: hh:mm,hh:mm")
-time_values = test1.read_cast(datetime, "%H:%M")
+time_values = input()
 print("Ingrese el valor de cada bloque \n"
 "con el siguiente formato: v1,v2")
-values = test1.read_cast(float)
-print("terminado") """
+values = input()
+print("terminado") 
+test1.add_field(time_values, values, "Psuc", float)
 
-list = [1,2,3]
-print(list[2])
+
+n = int(input("Por favor ingrese el número de intervalos \n"))
+print("Ingrese la hora de inicio de cada bloque en horario militar \n"
+        "con el siguiente formato: hh:mm,hh:mm")
+time_values = input()
+print("Ingrese el valor de cada bloque \n"
+"con el siguiente formato: v1,v2")
+values = input()
+print("terminado") 
+test1.add_field(time_values, values, "Pcond", float)
+
+
+n = int(input("Por favor ingrese el número de intervalos \n"))
+print("Ingrese la hora de inicio de cada bloque en horario militar \n"
+        "con el siguiente formato: hh:mm,hh:mm")
+time_values = input()
+print("Ingrese el valor de cada bloque \n"
+"con el siguiente formato: v1,v2")
+values = input()
+print("terminado") 
+test1.add_field(time_values, values, "Temp", int)
+
+test1.df_from_intervals()
+print(test1.df.head(40))
 

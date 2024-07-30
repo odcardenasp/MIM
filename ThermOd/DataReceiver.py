@@ -29,7 +29,8 @@ class DataReceiver:
     dict_output = {}
     fields = []
 
-
+    #Cast all fields in array to selected output type, format is optional
+    #if output_type is a datetime. 
     def __read_cast(self, data, output_type, format = None):
 
         while True:
@@ -42,10 +43,14 @@ class DataReceiver:
             
             except (AttributeError, ValueError):
                     print(f"Sorry, The date type is wrong, It can't be cast to {output_type} type.")
+                    return None
             
         return value_list
     
 
+
+    #Add a pair of time and variable to define 24h profile, the output is a Dictionary
+    #whose key is the name of variable, for example: suc_pressure
     def add_field(self, time, value, name, output_type):
 
         self.fields.append( self.__read_cast(time, datetime, '%H:%M') )
@@ -55,6 +60,7 @@ class DataReceiver:
         self.num_fields += 1
         return self.dict_input
     
+    #Delete a pair of time and variable array, whose key is the name of variable
     def del_field(self, name):
 
         try:
@@ -101,7 +107,7 @@ class DataReceiver:
 
         return self.df 
 
-
+    #get the nearest value from array to a pivot value 
     def __nearest(self, items, pivot):
         return min(items, key = lambda x: abs(x - pivot))
 

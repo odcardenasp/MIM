@@ -28,7 +28,8 @@ class DataReceiverFile:
     df = None
     fields = []
 
-
+    #Detect what symbol is used as the decimal point and detect the delimiter
+    #from CSV or txt file
     def __detect_delimiter_and_decimal(self, file_path, sample_size=1024):
         with open(file_path, 'r') as file:
             sample = file.read(sample_size)
@@ -40,7 +41,7 @@ class DataReceiverFile:
         
         return delimiter, decimal
     
-
+    #convert data to dataframe.
     def __df_from_filetype(self, filetype, filepath):
     
         try: 
@@ -59,7 +60,7 @@ class DataReceiverFile:
         return out_df
 
 
-
+    #Read a single file and return a dataframe
     def read_file(self):
 
         window = tk.Tk()
@@ -80,7 +81,8 @@ class DataReceiverFile:
 
         return self.df
 
-
+    #Read directory which could contain multiple files and concatenate them together
+    #to single dataframe
     def read_directory(self):
 
         window = tk.Tk()
@@ -112,6 +114,8 @@ class DataReceiverFile:
 
         return self.df
 
+    #Clean the dataframe, first clean NAN rows and columns, then detect the "fecha"
+    #column and cast to NAN non-numeric or non-datetime values to finally delete them
     def __clean_df(self, df): 
         df.dropna(axis = 1, thresh = round(len(df.index) / 2), inplace = True)
         df.dropna(axis = 0, inplace = True)
@@ -136,7 +140,8 @@ class DataReceiverFile:
         self.df = df
         return df  
 
-
+    #If value is str, return string without characters different from
+    #digits, dots, commas or negative signs.
     def __non_decimal(self, value):
         if isinstance(value, str):
             non_decimal = re.compile(r'[^\d.,-]+')

@@ -47,6 +47,13 @@ class DataReceiver:
             
         return value_list
     
+    def Sort_profile(self, data, index = None):
+        if index != None:
+            output = sorted(data, key = lambda x: x[index])
+        else :
+            output = sorted(data, key = lambda x: x[0])
+        return output
+
 
 
     #Add a pair of time and variable to define 24h profile, the output is a Dictionary
@@ -55,6 +62,8 @@ class DataReceiver:
 
         self.fields.append( self.__read_cast(time, datetime, '%H:%M') )
         self.fields.append( self.__read_cast(value, output_type, format) )
+        zipped = list(zip(self.fields[0], self.fields[1]))
+        self.fields[0], self.fields[1] = zip(*self.Sort_profile(zipped, index = 0))
         self.dict_input[name] = self.fields
         self.fields = []
         self.num_fields += 1
@@ -132,7 +141,7 @@ values = input()
 print("terminado") 
 test1.add_field(time_values, values, "Psuc", float)
 
-
+"""
 n = int(input("Por favor ingrese el número de intervalos \n"))
 print("Ingrese la hora de inicio de cada bloque en horario militar \n"
         "con el siguiente formato: hh:mm,hh:mm")
@@ -153,6 +162,7 @@ print("Ingrese el valor de cada bloque \n"
 values = input()
 print("terminado") 
 test1.add_field(time_values, values, "Temp", int)
+"""
 
 test1.df_from_intervals()
 print(test1.df.head(40))

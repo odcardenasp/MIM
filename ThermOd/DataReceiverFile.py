@@ -88,7 +88,7 @@ class DataReceiverFile:
         window = tk.Tk()
         window.wm_attributes('-topmost', 1)
         window.withdraw()   # this supress the tk window
-
+ 
         self.fields = []
         directory_path_str = fd.askdirectory(parent = window)
         directory = os.fsencode(directory_path_str)
